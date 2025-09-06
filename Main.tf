@@ -1,11 +1,11 @@
-resource "aws_security_group" "Project-SG" {
-  name        = "Project-SG"
-  description = "Open 22,443,80,8080,9000"
+# Create a new Security Group
+resource "aws_security_group" "project_sg" {
+  name        = "Project-SG-unique"
+  description = "Open ports 22, 80, 443, 8080, 9000, 3000"
 
-  # Define a single ingress rule to allow traffic on all specified ports
   ingress = [
     for port in [22, 80, 443, 8080, 9000, 3000] : {
-      description      = "TLS from VPC"
+      description      = "Allow TCP port ${port}"
       from_port        = port
       to_port          = port
       protocol         = "tcp"
@@ -17,30 +17,38 @@ resource "aws_security_group" "Project-SG" {
     }
   ]
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  egress = [
+    {
+      description      = "Allow all outbound traffic"
+      from_port        = 0
+      to_port          = 0
+      protocol         = "-1"
+      cidr_blocks      = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = []
+      prefix_list_ids  = []
+      security_groups  = []
+      self             = false
+    }
+  ]
 
   tags = {
-    Name = "Project-SG"
+    Name = "Project-SG-unique"
   }
 }
 
-
+# EC2 Instance
 resource "aws_instance" "web" {
-  ami                    = "ami-02d26659fd82cf299"
+  ami                    = "ami-0dee22c13ea7a9a67" # Ubuntu 22.04 LTS
   instance_type          = "t2.large"
   key_name               = "Swiggy"
-  vpc_security_group_ids = [aws_security_group.Project-SG.id]
-  user_data              = templatefile("./resource.sh", {})
+  vpc_security_group_ids = [aws_security_group.project_sg.id]
+  user_data              = file("./resource.sh")
+
+  root_block_device {
+    volume_size = 30
+  }
 
   tags = {
     Name = "Swiggy"
-  }
-  root_block_device {
-    volume_size = 30
   }
 }
